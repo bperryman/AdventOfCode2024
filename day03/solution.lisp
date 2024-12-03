@@ -1,6 +1,6 @@
 ;; Day 3 solution file
 ;; NOTE: Today we require the following additional loader:
-;; (ql:quickload :cl-ppcre
+;; (ql:quickload :cl-ppcre)
 
 (defun load-data (file)
   (aoc:read-data-file file))
@@ -21,8 +21,8 @@
 (defun operation-type (str)
   (cond
     ((string-equal "mul" str :end2 3) :operation)
-    ((string-equal "do(" str :end2 3) :do)
-    ((string-equal "don't(" str :end2 6) :do-not)
+    ((string-equal "do()" str) :do)
+    ((string-equal "don't()" str) :do-not)
     (t :unknown)))
 
 (defun solution-2 (file)
