@@ -3,8 +3,11 @@
   "Load the problem data"
   (aoc:read-data-file file :dataset-processor #'aoc:process-dataset-to-matrix))
 
-(defun visited-p (visited-map pt)
-  (= 1 (apply #'aref visited-map pt)))
+(defun visited-p (visited-map r c)
+  (= 1 (aref visited-map r c)))
+
+(defun set-visited (visited-map r c)
+  (setf (aref visited-map r c) 1))
 
 (defun create-visited-map (data)
   "Creates a 2d array binary bits the same size as the data"
@@ -35,15 +38,18 @@
 
 (defun fencing-around (data r c current-cell)
   "Uses the data and the visited data to mark off locations visited"
-  (let ((dimensions (array-dimensions data)))
-    (cond
-      ((or (< r 0) (< c 0) (>= r (first dimensions)) (>= c (second dimensions))) 1)
-      ((null (aref data r c)) 0)
-      ((not (char= current-cell (aref data r c))) 1)
-      (t 
-       (setf (aref data r c) nil)
-       (+ (fencing-around data (- r 1) c current-cell)
-          (fencing-around data r (- c 1) current-cell)
-          (fencing-around data r (+ c 1) current-cell)
-          (fencing-around data (+ r 1) c current-cell))))))
+  (let ((dimensions (array-dimensions data))
+        (visited-map (create-visited-map data)))
+    (labels ((visit-similar (r c)
+               (cond
+                 ((or (< r 0) (< c 0) (>= r (first dimensions)) (>= c (second dimensions))) 1)
+                 ((visited-p visited-map r c) 0)
+                 ((not (char= current-cell (aref data r c))) 1)
+                 (t 
+                  (set-visited visited-map r c)
+                  (+ (visit-similar (- r 1) c)
+                     (visit-similar r (- c 1))
+                     (visit-similar r (+ c 1))
+                     (visit-similar (+ r 1) c))))))
+      (values (visit-similar r c) visited-map))))
 
