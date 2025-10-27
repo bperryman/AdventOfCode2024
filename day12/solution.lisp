@@ -16,6 +16,11 @@
                 :element-type '(unsigned-byte 1)
                 :initial-element 0)))
 
+(defun number-of-locations-visited (data)
+  (reduce #'+ (make-array (apply #'* (array-dimensions data))
+                          :displaced-to data
+                          :element-type '(unsigned-byte 1))))
+
 (defun merge-visited (visited-1 visited-2)
   "Create a unified visited map."
   (let ((return-data (create-visited-map visited-1))
@@ -36,10 +41,11 @@
                    do (return-from next-unvisited (list r c)))
           finally (return nil))))
 
-(defun fencing-around (data r c current-cell)
+(defun fencing-around (data r c)
   "Uses the data and the visited data to mark off locations visited"
   (let ((dimensions (array-dimensions data))
-        (visited-map (create-visited-map data)))
+        (visited-map (create-visited-map data))
+        (current-cell (aref data r c)))
     (labels ((visit-similar (r c)
                (cond
                  ((or (< r 0) (< c 0) (>= r (first dimensions)) (>= c (second dimensions))) 1)
@@ -53,3 +59,17 @@
                      (visit-similar (+ r 1) c))))))
       (values (visit-similar r c) visited-map))))
 
+(defun solution-1 (file-name)
+  (let* ((data (load-data file-name))
+         (visited (create-visited-map data))
+         (result 0))
+    (do ((next-start '(0 0) (next-unvisited visited)))
+        ((null next-start) result)
+      (multiple-value-bind (fencing area-map) (fencing-around data
+                                                              (first next-start)
+                                                              (second next-start))
+        (let ((area (number-of-locations-visited area-map)))
+          (format t "Location ~a containing ~c with perimeter ~d and area ~a~%"
+                  next-start (apply #'aref data next-start) fencing area)
+          (incf result (* fencing area))
+          (setf visited (merge-visited visited area-map)))))))
