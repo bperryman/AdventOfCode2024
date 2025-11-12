@@ -54,7 +54,8 @@ major list (row column)"
         ((= x (second dims)) total)
       (do ((y 0 (1+ y)))
           ((= y (first dims)))
-        (when (char= #\O (aref map y x))
+        (when (or (char= #\O (aref map y x))
+                  (char= #\[ (aref map y x)))
           (incf total (+ (* y 100) x)))))))
  
 (defun solution-1 (file)
@@ -62,4 +63,78 @@ major list (row column)"
     (loop for direction across movements
           do (progn
                (move-robot map (lookup-direction direction) (robot-location map)))
+          finally (return (gps-box-score map)))))
+
+;; part 2
+(defun upscaled-map-entry (entry)
+  (case entry
+    (#\. '(#\. #\.))
+    (#\# '(#\# #\#))
+    (#\O '(#\[ #\]))
+    (#\@ '(#\@ #\.))
+    (t   '(#\- #\-))))
+
+(defun upscale-map (map)
+  (let* ((dims (array-dimensions map))
+         (data (make-array (list (first dims) (* 2 (second dims)))
+                           :element-type 'base-char)))
+    (loop for row from 0 below (first dims)
+          do (loop for column from 0 below (second dims)
+                   for replacement = (upscaled-map-entry (aref map row column))
+                   do (setf (aref data row (* 2 column)) (first replacement)
+                            (aref data row (+ 1 (* 2 column))) (second replacement)))
+          finally (return data))))
+
+(defun is-vertical-movement-p (direction)
+  (not (zerop (aoc:point-y direction))))
+
+
+(defun move-robot-2 (overview-map direction location)
+  (let* ((next-location (aoc:add-points location direction))
+         (next-location-entry (aoc:data-at overview-map next-location)))
+    (cond
+      ((char= next-location-entry #\.)
+       (swap-data overview-map location next-location)
+       t)
+      ((char= next-location-entry #\#)
+       nil)
+      ((and (not (is-vertical-movement-p direction))
+            (or (char= next-location-entry #\[)
+                (char= next-location-entry #\]))
+            (move-robot-2 overview-map direction next-location))
+       (swap-data overview-map location next-location)
+       t)
+      ((and (is-vertical-movement-p direction)
+            (char= next-location-entry #\[)
+            (move-robot-2 overview-map direction next-location)
+            (move-robot-2 overview-map direction (aoc:add-points next-location #@(1 0))))
+       (swap-data overview-map
+                  location
+                  next-location)
+       (swap-data overview-map
+                  (aoc:add-points location #@(1 0))
+                  (aoc:add-points next-location #@(1 0)))
+       t)
+      ((and (is-vertical-movement-p direction)
+            (char= next-location-entry #\])
+            (move-robot-2 overview-map direction next-location)
+            (move-robot-2 overview-map direction (aoc:add-points next-location #@(-1 0))))
+       (swap-data overview-map
+                  location
+                  next-location)
+       (swap-data overview-map
+                  (aoc:add-points location #@(-1 0))
+                  (aoc:add-points next-location #@(-1 0)))
+       t))))
+
+(defun solution-2 (file)
+  (multiple-value-bind (map movements) (load-data file)
+    (setf map (upscale-map map))
+    (format t "Initial state~%")
+    (print-map map)
+    (loop for direction across movements
+          do (progn
+               (move-robot-2 map (lookup-direction direction) (robot-location map))
+               (format t "Move ~c:~%" direction)
+               (print-map map))
           finally (return (gps-box-score map)))))
